@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>末日文字生存 - 掛機版</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #00ff00;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        h1 { text-align: center; color: #ff3333; }
+        .status-panel {
+            border: 1px solid #00ff00;
+            padding: 15px;
+            margin-bottom: 15px;
+            background-color: #1a1a1a;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .log-panel {
+            border: 1px solid #00ff00;
+            height: 250px;
+            padding: 10px;
+            overflow-y: scroll;
+            background-color: #050505;
+            margin-bottom: 15px;
+        }
+        .log-entry { margin-bottom: 5px; line-height: 1.4; }
+        .control-panel {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        button {
+            background-color: #222;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover { background-color: #00ff00; color: #000; }
+        button:disabled { border-color: #444; color: #444; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+    <h1>🧟 末日文字生存（自動掛機版）</h1>
+    
+    <!-- 狀態顯示區 -->
+    <div class="status-panel">
+        <div>📅 天數: <span id="day">1</span></div>
+        <div>❤️ 生命值: <span id="hp">100</span></div>
+        <div>🎒 物資: <span id="supplies">5</span></div>
+        <div>🔫 彈藥: <span id="ammo">10</span></div>
+        <div>🗺️ 距離安全區: <span id="distance">100</span> km</div>
+        <div>🚨 喪屍距離: <span id="zombie-dist">20</span> 米</div>
+    </div>
+
+    <!-- 文本日誌區 -->
+    <div class="log-panel" id="log">
+        <div class="log-entry" style="color: #ffff00;">🦁 歡迎來到末日。遊戲將每 2 秒自動運行一輪（自動掛機）。</div>
+    </div>
+
+    <!-- 控制按鈕 -->
+    <div class="control-panel">
+        <button id="start-btn" onclick="toggleGame()">開始掛機</button>
+        <button id="reset-btn" onclick="resetGame()" style="display:none;">重新開始</button>
+    </div>
+
+    <script>
+        // 遊戲狀態變數
+        let gameState = {
+            hp: 100, ammo: 10, supplies: 5, day: 1, distance: 100, zombieDist: 20, isRunning: false
+        };
+        let gameInterval = null;
+
+        function log(text, color = "#00ff00") {
+            const logPanel = document.getElementById("log");
+            const entry = document.createElement("div");
+            entry.className = "log-entry";
+            entry.style.color = color;
+            entry.innerText = text;
+            logPanel.appendChild(entry);
+            logPanel.scrollTop = logPanel.scrollHeight; // 自動捲動到最下方
+        }
+
+        function updateUI() {
+            document.getElementById("day").innerText = gameState.day;
+            document.getElementById("hp").innerText = gameState.hp;
+            document.getElementById("supplies").innerText = gameState.supplies;
+            document.getElementById("ammo").innerText = gameState.ammo;
+            document.getElementById("distance").innerText = gameState.distance;
+            document.getElementById("zombie-dist").innerText = gameState.zombieDist;
+        }
+
+        function toggleGame() {
+            if (gameState.isRunning) {
+                clearInterval(gameInterval);
+                document.getElementById("start-btn").innerText = "繼續掛機";
+                gameState.isRunning = false;
+                log("⏸️ 遊戲已暫停。");
+            } else {
+                document.getElementById("start-btn").innerText = "暫停掛機";
+                gameState.isRunning = true;
+                log("▶️ 開始自動掛機...", "#ffff00");
+                gameInterval = setInterval(gameLoop, 2000); // 每 2 秒執行一輪
+            }
+        }
+
+        // 核心掛機 AI 決策邏輯
+        function gameLoop() {
+            log(`\n---【第 ${gameState.day} 天】---`, "#aaa");
+
+            // 1. 玩家決策 AI
+            if (gameState.zombieDist < 10 && gameState.ammo > 0) {
+                // 喪屍太近且有子彈 -> 射擊
+                gameState.ammo--;
+                let repel = Math.floor(Math.random() * 11) + 10; // 10-20
+                gameState.zombieDist += repel;
+                log(`🔫 砰！AI 自動回身開槍，將喪屍擊退了 ${repel} 米！`);
+            } else if (gameState.hp < 40 && gameState.supplies >= 2) {
+                // 血量低且物資夠 -> 治療
+                gameState.supplies -= 2;
+                gameState.hp = Math.min(100, gameState.hp + 20);
+                log(`🩹 AI 評估血量過低，自動消耗 2 份物資治療，HP 回復至 ${gameState.hp}。`);
+            } else if (gameState.supplies > 0) {
+                // 正常情況 -> 趕路
+                gameState.supplies--;
+                let advance = Math.floor(Math.random() * 6) + 10; // 10-15
+                gameState.distance -= advance;
+                gameState.zombieDist += Math.floor(Math.random() * 4) + 2; // 2-5
+                log(`🏃 AI 選擇前進，前進了 ${advance} km！`);
+            } else {
+                // 沒物資只能硬著頭皮休息
+                gameState.hp = Math.min(100, gameState.hp + 5);
+                gameState.zombieDist -= Math.floor(Math.random() * 6) + 5; // 5-10
+                log(`🛌 缺乏物資！AI 只能就地休息，HP+5，但喪屍大幅逼近！`, "#ff9900");
+            }
+
+            // 檢查勝負 1
+            if (checkGameOver()) return;
+
+            // 2. 喪屍回合
+            let approach = Math.floor(Math.random() * 6) + 3; // 3-8
+            gameState.zombieDist -= approach;
+            log(`⚠️ 喪屍在後方尾隨逼近了 ${approach} 米！`);
+
+            if (gameState.zombieDist <= 0) {
+                let damage = Math.floor(Math.random() * 16) + 15; // 15-30
+                gameState.hp -= damage;
+                gameState.zombieDist = Math.floor(Math.random() * 6) + 5; // 被咬後拉開 5-10 米
+                log(`💥 避無可避！你被喪屍撲倒咬傷，受到 ${damage} 點傷害！`, "#ff3333");
+            }
+
+            // 檢查勝負 2
+            if (checkGameOver()) return;
+
+            // 3. 每日隨機事件
+            let rand = Math.random();
+            if (rand < 0.3) {
+                let found = Math.floor(Math.random() * 4) + 2;
+                gameState.ammo += found;
+                log(`🔍 搜尋路邊廢墟，幸運找到了 ${found} 發子彈。`);
+            } else if (rand < 0.6) {
+                let found = Math.floor(Math.random() * 3) + 1;
+                gameState.supplies += found;
+                log(`🔍 在空無一人的民宅內找到了 ${found} 份物資。`);
+            }
+
+            gameState.day++;
+            updateUI();
+        }
+
+        function checkGameOver() {
+            if (gameState.hp <= 0) {
+                gameState.hp = 0;
+                updateUI();
+                clearInterval(gameInterval);
+                log("\n💀 你不幸在末日中犧牲... 遊戲結束！", "#ff0000");
+                endGame();
+                return true;
+            }
+            if (gameState.distance <= 0) {
+                gameState.distance = 0;
+                updateUI();
+                clearInterval(gameInterval);
+                log("\n🎉 奇蹟！你成功突破封鎖線，抵達安全區！你活下來了！", "#00ffff");
+                endGame();
+                return true;
+            }
+            return false;
+        }
+
+        function endGame() {
+            document.getElementById("start-btn").style.display = "none";
+            document.getElementById("reset-btn").style.display = "inline-block";
+        }
+
+        function resetGame() {
+            gameState = { hp: 100, ammo: 10, supplies: 5, day: 1, distance: 100, zombieDist: 20, isRunning: false };
+            document.getElementById("log").innerHTML = '<div class="log-entry" style="color: #ffff00;">🦁 遊戲已重置。點擊下方按鈕開始掛機。</div>';
+            document.getElementById("start-btn").style.display = "inline-block";
+            document.getElementById("start-btn").innerText = "開始掛機";
+            document.getElementById("reset-btn").style.display = "none";
+            updateUI();
+        }
+    </script>
+</body>
+</html>
